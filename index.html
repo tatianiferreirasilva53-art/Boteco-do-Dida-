@@ -79,6 +79,7 @@ function staff(){
 }
 function addStaff(){let n=document.getElementById('nn').value.trim(),r=Number(document.getElementById('nr').value||0);if(!n)return alert('Informe o nome');if(data.staff.some(s=>s.name.toLowerCase()===n.toLowerCase()))return alert('Já cadastrado');data.staff.push({name:n,rate:r});save();staff()}
 function removeStaff(i){if(confirm('Remover funcionário?')){data.staff.splice(i,1);save();staff()}}
+
 function rateStaff(i,v){data.staff[i].rate=Number(v||0);save()}
 render();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
