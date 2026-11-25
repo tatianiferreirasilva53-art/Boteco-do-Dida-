@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.json">
+<title>Boteco do Dida</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#111;color:#f4f4f4;font-family:Arial,sans-serif;padding:12px 12px 30px}
+header{text-align:center;padding:12px 0 4px}h1{color:#d4af37;font-size:23px;margin:4px}.sub{color:#aaa;font-size:12px}
+nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:14px 0}
+nav button,.btn{border:0;border-radius:9px;padding:10px 7px;background:#333;color:white;font-weight:bold}
+nav button.active,.gold{background:#d4af37;color:#111}
+.card{background:#202020;border:1px solid #383838;border-radius:12px;padding:13px;margin:10px 0}
+input,select{width:100%;background:#242424;color:white;border:1px solid #555;border-radius:8px;padding:10px;margin:5px 0}
+.entry,.stat{background:#292929;padding:10px;border-radius:9px;margin:8px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row{display:flex;gap:7px;align-items:center}.row>*{flex:1}
+.muted{font-size:12px;color:#aaa}
+button{cursor:pointer}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.calday{text-align:center;background:#292929;border-radius:6px;padding:8px 2px;min-height:42px;font-size:12px}.openDay{border:1px solid #d4af37}.hasRecord{background:#554718}
+</style>
+</head>
+<body>
+<header><h1>🍻 BOTECO DO DIDA</h1><div class="sub">Gestão de escalas, presença e pagamentos</div></header>
+<nav>
+<button class="active" onclick="tab('scale',this)">Escala</button>
+<button onclick="tab('calendar',this)">Calendário</button>
+<button onclick="tab('report',this)">Relatórios</button>
+<button onclick="tab('staff',this)">Equipe</button>
+</nav>
+<main id="content"></main>
+<script>
+const KEY='boteco_dida_pwa_v1';
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||{staff:[{name:'Camila',rate:0},{name:'Daniel',rate:0},{name:'Gabriel',rate:0},{name:'Guilherme',rate:0},{name:'Ketelyn',rate:0}],records:[]};
+let date=new Date().toLocaleDateString('sv-SE'),month=date.slice(0,7),current='scale';
+function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function br(d){return d.split('-').reverse().join('/')}
+function day(d){return ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(d+'T12:00:00').getDay()]}
+function isOpen(d){return [5,6,0].includes(new Date(d+'T12:00:00').getDay())}
+function rec(d){return data.records.find(r=>r.date===d)}
+function setTab(t,b){current=t;document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');render()}
+function tab(t,b){setTab(t,b)}
+function render(){if(current==='scale')scale();if(current==='calendar')calendar();if(current==='report')report();if(current==='staff')staff()}
+function scale(){
+ let r=rec(date),entries=r?.entries||[];
+ content.innerHTML=`<div class="card"><h3>📅 Registrar escala e presença</h3><label>Data</label><input id="d" type="date" value="${date}"><div class="muted">${day(date)} ${isOpen(date)?'🍻 Dia de funcionamento':'⚠️ Dia fora da abertura normal'}</div><div id="forms"></div><button class="btn gold" style="width:100%;margin-top:10px" onclick="saveDay()">Salvar registro</button></div><div class="card"><h3>Resumo do dia</h3><div id="sum"></div></div><div class="card"><h3>Registros recentes</h3><div id="recent"></div></div>`;
+ document.getElementById('d').onchange=e=>{date=e.target.value;render()};
+ document.getElementById('forms').innerHTML=data.staff.map(s=>{let e=entries.find(x=>x.name===s.name)||{status:'scheduled',rate:s.rate};return `<div class="entry"><b>${esc(s.name)}</b><div class="grid"><select class="status" data-n="${esc(s.name)}"><option value="scheduled" ${e.status==='scheduled'?'selected':''}>Escalado</option><option value="worked" ${e.status==='worked'?'selected':''}>Trabalhou</option><option value="absent" ${e.status==='absent'?'selected':''}>Faltou</option><option value="replaced" ${e.status==='replaced'?'selected':''}>Substituído</option></select><input class="rate" data-n="${esc(s.name)}" type="number" step=".01" min="0" placeholder="Diária R$" value="${e.rate??s.rate}"></div></div>`}).join('');
+ let worked=entries.filter(e=>e.status==='worked'),sum=worked.reduce((a,e)=>a+Number(e.rate||0),0);
+ document.getElementById('sum').innerHTML=`<div class="grid"><div class="stat"><b style="color:#d4af37">${worked.length}</b><div class="muted">Trabalharam</div></div><div class="stat"><b style="color:#d4af37">${money(sum)}</b><div class="muted">Pagamento do dia</div></div></div>${worked.length?'Trabalharam: '+worked.map(e=>esc(e.name)).join(', '):'Nenhuma presença marcada.'}`;
+ document.getElementById('recent').innerHTML=[...data.records].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5).map(r=>`<div class="entry"><b>${br(r.date)} • ${day(r.date)}</b><br><span class="muted">${r.entries.filter(e=>e.status==='worked').map(e=>esc(e.name)).join(', ')||'Sem presença'}</span><button class="btn" onclick="editDate('${r.date}')">Editar</button></div>`).join('')||'<span class="muted">Sem registros.</span>';
+}
+function saveDay(){let entries=[...document.querySelectorAll('.status')].map(s=>({name:s.dataset.n,status:s.value,rate:Number(document.querySelector('.rate[data-n="'+s.dataset.n+'"]').value||0)}));let i=data.records.findIndex(r=>r.date===date);let obj={date,entries};if(i>=0)data.records[i]=obj;else data.records.push(obj);data.records.sort((a,b)=>a.date.localeCompare(b.date));save();render();alert('Registro salvo!')}
+function editDate(d){date=d;current='scale';document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));document.querySelector('nav button').classList.add('active');render()}
+function calendar(){
+ content.innerHTML=`<div class="card"><h3>🗓️ Calendário</h3><input type="month" id="m" value="${month}"><div class="calendar" id="cg"></div><p class="muted">Dourado: sexta/sábado/domingo • ●: registro feito</p></div>`;
+ document.getElementById('m').onchange=e=>{month=e.target.value;calendar()};
+ let [y,m]=month.split('-').map(Number),first=new Date(y,m-1,1).getDay(),last=new Date(y,m,0).getDate();
+ let h=['D','S','T','Q','Q','S','S'].map(x=>`<b style="text-align:center;color:#d4af37">${x}</b>`).join('');
+ for(let i=0;i<first;i++)h+='<div></div>';
+ for(let d=1;d<=last;d++){let dt=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;h+=`<div class="calday ${isOpen(dt)?'openDay':''} ${rec(dt)?'hasRecord':''}" onclick="editDate('${dt}')">${d}${rec(dt)?'<br>●':''}</div>`}
+ document.getElementById('cg').innerHTML=h;
+}
+function report(){
+ content.innerHTML=`<div class="card"><h3>📊 Fechamento mensal</h3><input type="month" id="rm" value="${month}"><div id="rb"></div><button class="btn gold" onclick="exportCSV()" style="width:100%">Exportar CSV para Excel</button></div>`;
+ document.getElementById('rm').onchange=e=>{month=e.target.value;report()};
+ let rs=data.records.filter(r=>r.date.startsWith(month)),tot=0,turns=0;
+ let staffStats=data.staff.map(s=>{let days=0,abs=0,scheduled=0,pay=0;rs.forEach(r=>r.entries.filter(e=>e.name===s.name).forEach(e=>{if(e.status==='worked'){days++;pay+=Number(e.rate||0)}if(e.status==='absent')abs++;if(e.status==='scheduled')scheduled++}));tot+=pay;turns+=days;return {name:s.name,days,abs,scheduled,pay}});
+ document.getElementById('rb').innerHTML=`<div class="grid"><div class="stat"><b style="color:#d4af37">${rs.length}</b><div class="muted">Dias registrados</div></div><div class="stat"><b style="color:#d4af37">${turns}</b><div class="muted">Turnos trabalhados</div></div><div class="stat"><b style="color:#d4af37">${money(tot)}</b><div class="muted">Total a pagar</div></div><div class="stat"><b style="color:#d4af37">${rs.filter(r=>r.entries.some(e=>e.status==='worked')).length}</b><div class="muted">Dias com equipe</div></div></div><h4>Por atendente</h4>${staffStats.map(s=>`<div class="entry"><b>${esc(s.name)}</b><div style="display:flex;justify-content:space-between"><span>${s.days} dia(s) • ${s.abs} falta(s)</span><b style="color:#d4af37">${money(s.pay)}</b></div></div>`).join('')}<h4>Detalhamento</h4>${rs.sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`<div class="entry"><b>${br(r.date)} — ${day(r.date)}</b><br>${r.entries.map(e=>`${esc(e.name)}: ${e.status==='worked'?'Trabalhou':e.status==='absent'?'Faltou':e.status==='replaced'?'Substituído':'Escalado'} (${money(e.rate)})`).join('<br>')}</div>`).join('')||'<p class="muted">Sem registros.</p>'}`;
+}
+function exportCSV(){let rows=[['Data','Dia','Funcionário','Status','Diária','Pagamento']];data.records.filter(r=>r.date.startsWith(month)).forEach(r=>r.entries.forEach(e=>rows.push([r.date,day(r.date),e.name,e.status,e.rate,e.status==='worked'?e.rate:0])));let csv='\ufeff'+rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(';')).join('\n');let blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='Boteco_Dida_'+month+'.csv';a.click();URL.revokeObjectURL(u)}
+function staff(){
+ content.innerHTML=`<div class="card"><h3>👥 Equipe e diárias</h3><div id="sl"></div><div class="row"><input id="nn" placeholder="Nome"><input id="nr" type="number" min="0" step=".01" placeholder="Diária R$"><button class="btn gold" onclick="addStaff()">Adicionar</button></div></div><div class="card"><p class="muted">Defina a diária padrão de cada atendente. Você poderá ajustar o valor em um registro específico se necessário.</p></div>`;
+ document.getElementById('sl').innerHTML=data.staff.map((s,i)=>`<div class="entry"><b>${esc(s.name)}</b><label class="muted">Diária padrão</label><input type="number" min="0" step=".01" value="${s.rate}" onchange="rateStaff(${i},this.value)"><button class="btn" onclick="removeStaff(${i})">Remover</button></div>`).join('');
+}
+function addStaff(){let n=document.getElementById('nn').value.trim(),r=Number(document.getElementById('nr').value||0);if(!n)return alert('Informe o nome');if(data.staff.some(s=>s.name.toLowerCase()===n.toLowerCase()))return alert('Já cadastrado');data.staff.push({name:n,rate:r});save();staff()}
+function removeStaff(i){if(confirm('Remover funcionário?')){data.staff.splice(i,1);save();staff()}}
+function rateStaff(i,v){data.staff[i].rate=Number(v||0);save()}
+render();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script>
+</body>
+</html>
