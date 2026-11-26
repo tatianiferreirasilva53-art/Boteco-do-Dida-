@@ -1,21 +1,15 @@
 {
-  "name": "Boteco do Dida - Gestão",
+  "name": "Boteco do Dida - Controle de Escalas",
   "short_name": "Boteco do Dida",
+  "description": "Controle semanal e histórico das escalas do Boteco do Dida",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#111111",
-  "description": "Controle de escalas, presença e pagamento dos atendentes do Boteco do Dida.",
+  "background_color": "#101010",
+  "theme_color": "#101010",
+  "orientation": "portrait",
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    {"src":"icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
   ]
 }
